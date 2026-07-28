@@ -1,0 +1,87 @@
+name: Initialize Factorio mod
+
+on:
+  workflow_call:
+    inputs:
+      internal_name:
+        required: true
+        type: string
+      mod_title:
+        description: Title in Factorio's info.json
+        required: true
+        type: string
+      display_name:
+        description: Display title saved for the Mod Portal
+        required: true
+        type: string
+      initial_version:
+        required: true
+        type: string
+      license:
+        required: true
+        type: string
+      category:
+        required: true
+        type: string
+      tags:
+        required: false
+        default: ''
+        type: string
+      description:
+        required: true
+        type: string
+      faq:
+        required: false
+        default: ''
+        type: string
+      summary:
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: factorio-mod-init-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  initialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out factorio-devops tools
+        uses: actions/checkout@v4
+        with:
+          repository: kubiix/factorio-devops
+          ref: v1
+          path: .factorio-devops
+
+      - name: Configure commit author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate and initialize the repository
+        env:
+          INTERNAL_NAME: ${{ inputs.internal_name }}
+          MOD_TITLE: ${{ inputs.mod_title }}
+          DISPLAY_NAME: ${{ inputs.display_name }}
+          INITIAL_VERSION: ${{ inputs.initial_version }}
+          MOD_LICENSE: ${{ inputs.license }}
+          CATEGORY: ${{ inputs.category }}
+          TAGS: ${{ inputs.tags }}
+          DESCRIPTION: ${{ inputs.description }}
+          FAQ: ${{ inputs.faq }}
+          SUMMARY: ${{ inputs.summary }}
+        run: python3 .factorio-devops/scripts/factorio_init.py . .factorio-devops
+
+      - name: Commit initialization
+        run: |
+          git add .factorio-release.json src modPortalContent LICENSE
+          git commit -m "Start development 2.1.x"
+          git push origin HEAD
