@@ -59,7 +59,8 @@ repository. It only runs when the root `.factorio-release.json` has
 fails when the requested internal name already exists. It sets `info.json`,
 the development version line, the `origin` state, root `COPYRIGHT`, and
 `modPortalContent` metadata. It leaves the template's MIT `LICENSE` unchanged,
-then commits `Start development 0.1.0` and tags that commit as `Init`.
+then commits `Start development <initial_version>` and tags that commit as
+`Init`. The optional `initial_version` input defaults to `0.1.0` when empty.
 The release workflow copies those root legal files into the staged mod archive.
 
 GitHub's manual Actions form supports single-choice inputs, but not a native

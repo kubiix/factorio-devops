@@ -11,6 +11,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 CATEGORIES = {"no-category", "content", "overhaul", "tweaks", "utilities", "scenarios", "mod-packs", "localizations", "internal"}
 TAGS = {"transportation", "logistics", "trains", "combat", "armor", "enemies", "environment", "mining", "fluids", "logistic-network", "circuit-network", "manufacturing", "power", "storage", "blueprints", "cheats"}
 def fail(message: str) -> None:
@@ -37,7 +38,7 @@ def portal_mod_exists(name: str) -> bool:
 def main(root: Path) -> None:
     internal_name = env("INTERNAL_NAME")
     mod_title = env("MOD_TITLE")
-    version = "0.1.0"
+    version = env("INITIAL_VERSION", required=False) or "0.1.0"
     category = env("CATEGORY")
     tags = [tag.strip() for tag in env("TAGS", required=False).split(",") if tag.strip()]
     description = env("DESCRIPTION", required=False)
@@ -49,6 +50,8 @@ def main(root: Path) -> None:
         fail("internal_name must start with kubiix-")
     if internal_name.endswith("-continued"):
         fail("internal_name must not end with -continued")
+    if not VERSION_RE.fullmatch(version):
+        fail("initial_version must be numeric major.minor.patch")
     if len(mod_title) > 250:
         fail("mod_title must not exceed 250 characters")
     if len(summary) > 500:

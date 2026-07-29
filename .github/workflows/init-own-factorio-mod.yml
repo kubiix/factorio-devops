@@ -10,6 +10,11 @@ on:
         description: Title in Factorio's info.json
         required: true
         type: string
+      initial_version:
+        description: Initial numeric version; defaults to 0.1.0 when empty
+        required: false
+        default: ''
+        type: string
       category:
         required: true
         type: string
@@ -71,6 +76,7 @@ jobs:
         env:
           INTERNAL_NAME: ${{ inputs.internal_name }}
           MOD_TITLE: ${{ inputs.mod_title }}
+          INITIAL_VERSION: ${{ inputs.initial_version }}
           CATEGORY: ${{ inputs.category }}
           TAGS: ${{ inputs.tags }}
           DESCRIPTION: ${{ inputs.description }}
@@ -82,6 +88,7 @@ jobs:
       - name: Commit initialization
         run: |
           git add .factorio-release.json src modPortalContent COPYRIGHT
-          git commit -S -m "KubiiTron [bot]: Start development 0.1.0"
+          INITIAL_VERSION="$(jq -r '.version' src/info.json)"
+          git commit -S -m "KubiiTron [bot]: Start development $INITIAL_VERSION"
           git tag -s --annotate Init --message "Initialize mod"
           git push origin HEAD --follow-tags
