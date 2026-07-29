@@ -48,7 +48,6 @@ def placeholder(version_line: str) -> str:
 Version: {version_line}
 Date: TBD
   Changes:
-  - 
     -
 """
 
