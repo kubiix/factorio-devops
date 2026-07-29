@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the mod repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch }}
           fetch-depth: 0
@@ -43,14 +43,14 @@ jobs:
       # A reusable workflow does not automatically expose its repository files.
       # This checkout makes the shared implementation available to the caller.
       - name: Check out factorio-devops tools
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: kubiix/factorio-devops
           ref: main
           path: .factorio-devops
 
       - name: Import signing key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@v7
         with:
           gpg_private_key: ${{ secrets.gpg_private_key }}
           git_user_signingkey: true

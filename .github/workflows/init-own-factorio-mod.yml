@@ -43,19 +43,19 @@ jobs:
   initialize:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Check out factorio-devops tools
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: kubiix/factorio-devops
           ref: main
           path: .factorio-devops
 
       - name: Import signing key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@v7
         with:
           gpg_private_key: ${{ secrets.gpg_private_key }}
           git_user_signingkey: true
