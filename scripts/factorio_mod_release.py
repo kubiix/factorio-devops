@@ -34,11 +34,6 @@ def version_tuple(version: str) -> tuple[int, int, int]:
     return tuple(map(int, version.split(".")))  # type: ignore[return-value]
 
 
-def line_for_version(version: str) -> str:
-    major, minor, _ = version_tuple(version)
-    return f"{major}.{minor}.x"
-
-
 def files(root: Path) -> tuple[Path, Path, Path]:
     return root / "src" / "info.json", root / "src" / "changelog.txt", root / ".factorio-release.json"
 
@@ -70,8 +65,8 @@ def prepare(root: Path, version: str) -> None:
     info_path, changelog_path, state_path = files(root)
     info, state = read_json(info_path), read_json(state_path)
     version_line = state.get("versionLine")
-    if state.get("versionState") != "development" or not isinstance(version_line, str) or not re.fullmatch(r"\d+\.\d+\.x", version_line):
-        fail(".factorio-release.json must mark development and contain a numeric versionLine ending in .x")
+    if state.get("versionState") != "development" or not isinstance(version_line, str) or not VERSION_RE.fullmatch(version_line):
+        fail(".factorio-release.json must mark development and contain a numeric versionLine")
     old = info.get("version")
     if not isinstance(old, str) or version_tuple(version) < version_tuple(old):
         fail("release version must be greater or equal than src/info.json version")
@@ -117,8 +112,6 @@ def build(root: Path, version: str) -> None:
         if candidate.exists():
             shutil.copy2(candidate, stage / document)
     changelog = subprocess.run(["git", "show", f"{tag}:src/changelog.txt"], cwd=root, check=True, capture_output=True, text=True).stdout
-    if re.search(r"(?m)^Version:\s*\d+\.\d+\.x\s*$", changelog):
-        fail("tagged release changelog must not contain a development placeholder")
     (stage / "changelog.txt").write_text(changelog, encoding="utf-8")
     dist.mkdir(exist_ok=True)
     output = dist / f"{prefix}.zip"
@@ -154,19 +147,19 @@ def start_development(root: Path) -> None:
     release_version = state.get("versionLine")
     if state.get("versionState") != "release" or not isinstance(release_version, str) or not VERSION_RE.fullmatch(release_version):
         fail("release state must retain the numeric release version in versionLine")
-    version_line = line_for_version(release_version)
-    changelog = changelog_path.read_text(encoding="utf-8")
-    if re.search(rf"(?m)^Version:\s*{re.escape(version_line)}\s*$", changelog):
-        fail("changelog already contains a development placeholder")
-    changelog_path.write_text(placeholder(version_line) + changelog, encoding="utf-8")
     current_version = info.get("version")
     if not isinstance(current_version, str):
         fail("src/info.json must contain a numeric release version")
     major, minor, patch = version_tuple(current_version)
-    info["version"] = f"{major}.{minor}.{patch + 1}"
+    next_version = f"{major}.{minor}.{patch + 1}"
+    changelog = changelog_path.read_text(encoding="utf-8")
+    if re.search(rf"(?m)^Version:\s*{re.escape(next_version)}\s*$", changelog):
+        fail("changelog already contains a development placeholder")
+    changelog_path.write_text(placeholder(next_version) + changelog, encoding="utf-8")
+    info["version"] = next_version
     info_path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     state["versionState"] = "development"
-    state["versionLine"] = version_line
+    state["versionLine"] = next_version
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
 

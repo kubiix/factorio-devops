@@ -69,9 +69,7 @@ def main(root: Path) -> None:
     if state.get("versionState") != "initPending":
         fail(".factorio-release.json must have versionState set to initPending")
 
-    major, minor, _ = version.split(".")
-    version_line = f"{major}.{minor}.x"
-    state.update({"versionState": "development", "versionLine": version_line, "origin": "own"})
+    state.update({"versionState": "development", "versionLine": version, "origin": "own"})
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
     info_path = root / "src" / "info.json"
     try:
@@ -91,9 +89,9 @@ def main(root: Path) -> None:
     info_path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     changelog_path = root / "src" / "changelog.txt"
     changelog = changelog_path.read_text(encoding="utf-8")
-    changelog, substitutions = re.subn(r"(?m)^Version:\s*\d+\.\d+\.x\s*$", f"Version: {version_line}", changelog, count=1)
+    changelog, substitutions = re.subn(r"(?m)^Version:\s*\d+\.\d+\.\d+\s*$", f"Version: {version}", changelog, count=1)
     if substitutions != 1 or not re.search(r"(?m)^Date:\s*TBD\s*$", changelog):
-        fail("src/changelog.txt must contain an initial numeric .x version and Date: TBD")
+        fail("src/changelog.txt must contain an initial numeric version and Date: TBD")
     changelog_path.write_text(changelog, encoding="utf-8")
 
     copyright_path = root / "COPYRIGHT"

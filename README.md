@@ -10,23 +10,21 @@ Each mod repository keeps mod files in `src/`, including `src/info.json`,
 workflow.
 
 During development, `src/info.json` contains the next numeric patch version.
-The current `src/changelog.txt` record remains a `Version: 0.1.x` entry with
+The current `src/changelog.txt` record uses that same version, such as `Version: 0.1.0`, with
 `Date: TBD`; changes accumulate there. `.factorio-release.json` must be:
 
 ```json
-{ "versionState": "development", "versionLine": "0.1.x" }
+{ "versionState": "development", "versionLine": "0.1.0" }
 ```
 
 The release workflow finalizes that record, creates a release commit and
 annotated `v<version>` tag, archives `src/` into
-`<internal-name>_<version>.zip`, adds `LICENSE` and `COPYRIGHT`, creates a
+`<internal-name>_<version>.zip`, adds `LICENSE` and `COPYRIGHT`, creates af
 draft GitHub release, uploads it to the Mod Portal,
 publishes the GitHub release, and then increments `src/info.json` by one patch
-and commits a fresh development `x / TBD` placeholder. A release may start a
-new minor line: releasing `1.1.0` from a `1.0.x` placeholder finalizes that
-record as `1.1.0` and records `versionLine` as `1.1.0` in the release commit.
-The next development commit changes it to `1.1.x` and begins development at
-`1.1.1`.
+and commits a fresh development record using that new version with `Date: TBD`.
+For example, after releasing `1.1.0`, the next development commit begins at
+`1.1.1` in both `info.json` and the changelog.
 
 The caller's **release mode** controls the external publishing stages:
 
