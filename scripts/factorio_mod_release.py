@@ -11,6 +11,8 @@ import sys
 import tarfile
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.error import HTTPError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -175,8 +177,21 @@ def portal_request(url: str, fields: list[tuple[str, str]], token: str | None = 
     headers = {"Content-Type": content_type}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    with urlopen(Request(url, data=body, headers=headers)) as response:
-        payload = json.load(response)
+    return portal_response(Request(url, data=body, headers=headers))
+
+
+def portal_form_request(url: str, fields: list[tuple[str, str]], token: str) -> dict:
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/x-www-form-urlencoded"}
+    return portal_response(Request(url, data=urlencode(fields).encode(), headers=headers))
+
+
+def portal_response(request: Request) -> dict:
+    try:
+        with urlopen(request) as response:
+            payload = json.load(response)
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        fail(f"Mod Portal request failed (HTTP {exc.code}): {detail}")
     if not payload.get("success", "upload_url" in payload):
         fail(f"Mod Portal request failed: {payload}")
     return payload
@@ -197,7 +212,7 @@ def upload_version(root: Path) -> None:
     archive = archive_for_info(root, info)
     name = info["name"]
     token = portal_token()
-    upload_url = portal_request("https://mods.factorio.com/api/v2/mods/releases/init_upload", [("mod", name)], token)["upload_url"]
+    upload_url = portal_form_request("https://mods.factorio.com/api/v2/mods/releases/init_upload", [("mod", name)], token)["upload_url"]
     portal_request(upload_url, [], archive=archive)
 
 
@@ -206,7 +221,7 @@ def publish(root: Path) -> None:
     archive = archive_for_info(root, info)
     name = info["name"]
     token = portal_token()
-    upload_url = portal_request("https://mods.factorio.com/api/v2/mods/init_publish", [("mod", name)], token)["upload_url"]
+    upload_url = portal_form_request("https://mods.factorio.com/api/v2/mods/init_publish", [("mod", name)], token)["upload_url"]
     portal_request(upload_url, [], archive=archive)
 
 
