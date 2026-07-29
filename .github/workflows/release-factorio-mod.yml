@@ -18,6 +18,8 @@ on:
         default: Full
         type: string
     secrets:
+      gpg_private_key:
+        required: true
       mod_portal_token:
         required: false
 
@@ -47,10 +49,18 @@ jobs:
           ref: main
           path: .factorio-devops
 
-      - name: Configure release author
+      - name: Import signing key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.gpg_private_key }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Configure commit author
         run: |
-          git config user.name "Kubiix DevOps Bot[bot]"
-          git config user.email "kubiix-factorio-devops-bot@users.noreply.github.com"
+          git config user.name "kubiix"
+          git config user.email "kubiix@live.com"
 
       - name: Validate release mode
         env:
@@ -72,8 +82,8 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.branch }}
         run: |
           git add src/info.json src/changelog.txt .factorio-release.json
-          git commit -m "Release $RELEASE_VERSION"
-          git tag --annotate "v$RELEASE_VERSION" --message "Release $RELEASE_VERSION"
+          git commit -S -m "Release $RELEASE_VERSION"
+          git tag -s --annotate "v$RELEASE_VERSION" --message "Release $RELEASE_VERSION"
           git push origin "HEAD:$RELEASE_BRANCH" --follow-tags
 
       - name: Build and validate the mod archive
@@ -110,6 +120,10 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.branch }}
         run: |
           python3 .factorio-devops/scripts/factorio_mod_release.py start-development .
+          CURRENT_VERSION="$(jq -r '.version' src/info.json)"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
           git add src/changelog.txt .factorio-release.json
-          git commit -m "Start development 2.1.x"
+          git commit -S -m "Start development $NEXT_VERSION"
           git push origin "HEAD:$RELEASE_BRANCH"
+

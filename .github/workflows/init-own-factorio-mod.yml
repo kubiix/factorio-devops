@@ -64,7 +64,7 @@ jobs:
 
       - name: Configure commit author
         run: |
-          git config user.name "KubiiTron [bot]"
+          git config user.name "kubiix"
           git config user.email "kubiix@live.com"
 
       - name: Validate and initialize the repository
