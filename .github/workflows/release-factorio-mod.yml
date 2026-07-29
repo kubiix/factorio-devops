@@ -102,11 +102,13 @@ jobs:
             --draft --title "$(jq -r .title src/info.json) $RELEASE_VERSION" \
             --notes-file .release-notes.md
 
-      - name: Upload to the Factorio Mod Portal
+      - name: Pull the release and details to the Factorio Mod Portal
+        id: portal-pull
         if: inputs.release_mode == 'Full'
         env:
           MOD_PORTAL_TOKEN: ${{ secrets.mod_portal_token }}
-        run: python3 .factorio-devops/scripts/factorio_mod_release.py upload .
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: echo "published=$(python3 .factorio-devops/scripts/factorio_mod_release.py pull .)" >> "$GITHUB_OUTPUT"
 
       - name: Publish the GitHub release
         if: inputs.release_mode != 'Commits Only'
@@ -118,8 +120,13 @@ jobs:
       - name: Start the next development cycle
         env:
           RELEASE_BRANCH: ${{ inputs.branch }}
+          PORTAL_PUBLISHED: ${{ steps.portal-pull.outputs.published }}
         run: |
-          python3 .factorio-devops/scripts/factorio_mod_release.py start-development .
+          if [ "$PORTAL_PUBLISHED" = "true" ]; then
+            python3 .factorio-devops/scripts/factorio_mod_release.py start-development . --published
+          else
+            python3 .factorio-devops/scripts/factorio_mod_release.py start-development .
+          fi
           NEXT_VERSION="$(jq -r '.version' src/info.json)"
           git add src/info.json src/changelog.txt .factorio-release.json
           git commit -S -m "KubiiTron [bot]: Start development $NEXT_VERSION"

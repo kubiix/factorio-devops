@@ -12,7 +12,6 @@ import tarfile
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.parse import urlencode
 
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
@@ -119,28 +118,109 @@ def build(root: Path, version: str) -> None:
     print(f"archive={output}")
 
 
-def upload(root: Path) -> None:
+def portal_token() -> str:
     token = os.environ.get("MOD_PORTAL_TOKEN")
     if not token:
-        fail("mod_portal_token secret is required when upload_to_portal is true")
-    info = read_json(root / "src" / "info.json")
+        fail("mod_portal_token secret is required for Mod Portal publishing")
+    return token
+
+
+def multipart(fields: list[tuple[str, str]], archive: Path | None = None) -> tuple[bytes, str]:
+    boundary = "----factorio-devops-boundary"
+    body = bytearray()
+    for name, value in fields:
+        body.extend(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n".encode())
+    if archive:
+        body.extend(f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{archive.name}\"\r\nContent-Type: application/zip\r\n\r\n".encode())
+        body.extend(archive.read_bytes())
+        body.extend(b"\r\n")
+    body.extend(f"--{boundary}--\r\n".encode())
+    return bytes(body), f"multipart/form-data; boundary={boundary}"
+
+
+def portal_request(url: str, fields: list[tuple[str, str]], token: str | None = None, archive: Path | None = None) -> dict:
+    if archive:
+        body, content_type = multipart(fields, archive)
+    else:
+        body, content_type = multipart(fields)
+    headers = {"Content-Type": content_type}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    with urlopen(Request(url, data=body, headers=headers)) as response:
+        payload = json.load(response)
+    if not payload.get("success", "upload_url" in payload):
+        fail(f"Mod Portal request failed: {payload}")
+    return payload
+
+
+def archive_for_info(root: Path, info: dict) -> Path:
     name, version = info.get("name"), info.get("version")
     archive = root / "dist" / f"{name}_{version}.zip"
     if not archive.is_file():
         fail(f"archive not found: {archive}")
-    request = Request("https://mods.factorio.com/api/v2/mods/releases/init_upload", data=urlencode({"mod": name}).encode(), headers={"Authorization": f"Bearer {token}"})
-    with urlopen(request) as response:
-        upload_url = json.load(response)["upload_url"]
-    boundary = "----factorio-devops-boundary"
-    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{archive.name}\"\r\nContent-Type: application/zip\r\n\r\n").encode() + archive.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
-    request = Request(upload_url, data=body, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
-    with urlopen(request) as response:
-        payload = json.load(response)
-    if not payload.get("success"):
-        fail(f"portal upload failed: {payload}")
+    if not isinstance(name, str) or not name or not isinstance(version, str) or not VERSION_RE.fullmatch(version):
+        fail("src/info.json must contain a valid name and numeric version")
+    return archive
 
 
-def start_development(root: Path) -> None:
+def upload_version(root: Path) -> None:
+    info = read_json(root / "src" / "info.json")
+    archive = archive_for_info(root, info)
+    name = info["name"]
+    token = portal_token()
+    upload_url = portal_request("https://mods.factorio.com/api/v2/mods/releases/init_upload", [("mod", name)], token)["upload_url"]
+    portal_request(upload_url, [], archive=archive)
+
+
+def publish(root: Path) -> None:
+    info = read_json(root / "src" / "info.json")
+    archive = archive_for_info(root, info)
+    name = info["name"]
+    token = portal_token()
+    upload_url = portal_request("https://mods.factorio.com/api/v2/mods/init_publish", [("mod", name)], token)["upload_url"]
+    portal_request(upload_url, [], archive=archive)
+
+
+def text_if_present(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value or None
+
+
+def edit_details(root: Path) -> None:
+    info = read_json(root / "src" / "info.json")
+    portal = read_json(root / "modPortalContent" / "portalInfo.json")
+    name, title, summary = info.get("name"), info.get("title"), info.get("description")
+    category, license_name, tags = portal.get("category"), portal.get("license"), portal.get("tags")
+    if not all(isinstance(value, str) and value for value in (name, title, summary, category, license_name)):
+        fail("info.json and portalInfo.json must contain non-empty name, title, description, category, and license")
+    if not isinstance(tags, list) or not all(isinstance(tag, str) and tag for tag in tags):
+        fail("modPortalContent/portalInfo.json tags must be an array of non-empty strings")
+    repository_url = os.environ.get("REPOSITORY_URL", "").strip()
+    if not re.fullmatch(r"https?://[^\s]+", repository_url):
+        fail("REPOSITORY_URL must be the current http(s) repository URL")
+    description = text_if_present(root / "modPortalContent" / "description.md") or summary
+    fields = [("mod", name), ("title", title), ("summary", summary), ("description", description), ("category", category), ("license", license_name), ("homepage", repository_url), ("source_url", repository_url)]
+    fields.extend(("tags", tag) for tag in tags)
+    faq = text_if_present(root / "modPortalContent" / "faq.md")
+    if faq:
+        fields.append(("faq", faq))
+    portal_request("https://mods.factorio.com/api/v2/mods/edit_details", fields, portal_token())
+
+
+def pull(root: Path) -> bool:
+    state = read_json(root / ".factorio-release.json")
+    published = state.get("published") is True
+    if published:
+        upload_version(root)
+    else:
+        publish(root)
+    edit_details(root)
+    return not published
+
+
+def start_development(root: Path, published: bool = False) -> None:
     info_path, changelog_path, state_path = files(root)
     info = read_json(info_path)
     state = read_json(state_path)
@@ -160,20 +240,30 @@ def start_development(root: Path) -> None:
     info_path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     state["versionState"] = "development"
     state["versionLine"] = next_version
+    if published:
+        state["published"] = True
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        fail("usage: factorio_mod_release.py {prepare|build|upload|start-development} ROOT [VERSION]")
+        fail("usage: factorio_mod_release.py {prepare|build|publish|upload-version|edit-details|pull|start-development} ROOT [VERSION|--published]")
     command, root = sys.argv[1], Path(sys.argv[2]).resolve()
     if command == "prepare" and len(sys.argv) == 4:
         prepare(root, sys.argv[3])
     elif command == "build" and len(sys.argv) == 4:
         build(root, sys.argv[3])
-    elif command == "upload" and len(sys.argv) == 3:
-        upload(root)
-    elif command == "start-development" and len(sys.argv) == 3:
-        start_development(root)
+    elif command == "publish" and len(sys.argv) == 3:
+        publish(root)
+    elif command == "upload-version" and len(sys.argv) == 3:
+        upload_version(root)
+    elif command == "edit-details" and len(sys.argv) == 3:
+        edit_details(root)
+    elif command == "pull" and len(sys.argv) == 3:
+        print(str(pull(root)).lower())
+    elif command == "start-development" and len(sys.argv) in (3, 4):
+        if len(sys.argv) == 4 and sys.argv[3] != "--published":
+            fail("start-development accepts only --published")
+        start_development(root, len(sys.argv) == 4)
     else:
         fail("invalid command arguments")

@@ -72,7 +72,7 @@ def main(root: Path) -> None:
     if state.get("versionState") != "initPending":
         fail(".factorio-release.json must have versionState set to initPending")
 
-    state.update({"versionState": "development", "versionLine": version, "origin": "own"})
+    state.update({"versionState": "development", "versionLine": version, "origin": "own", "published": False})
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
     info_path = root / "src" / "info.json"
     try:

@@ -42,14 +42,23 @@ The shared repository needs to be public, or the caller needs a separate token
 with read access to it for the tools checkout.
 Create `FACTORIO_MOD_PORTAL_TOKEN` as an organization or repository Actions
 secret. It must be an API key from the Factorio account that owns the mod or
-has permission to release it, with **ModPortal: Upload Mods** enabled. The
-official API documents `Forbidden` for insufficient permission, but does not
-spell out the Mod Portal's owner/collaborator policy; test the token once with
-an upload disabled from public release publication if that relationship is new.
+has permission to release it, with **ModPortal: Publish Mods**, **Upload
+Mods**, and **Edit Mods** enabled. The official API documents `Forbidden` for
+insufficient permission, but does not spell out the Mod Portal's
+owner/collaborator policy.
 
-The workflow uses the official two-stage upload API: `init_upload` takes the
-internal mod name and bearer key, then its returned URL receives the ZIP.
-There is no per-mod upload URL to store.
+The **Full** release mode pulls the ZIP and metadata to the Mod Portal. If
+`.factorio-release.json` has `"published": false` (or does not yet have the
+field), it uses the two-stage Mod Publish API. Otherwise it uses the two-stage
+release upload API. After the first successful publish, the following
+development commit records `"published": true`.
+
+The portal details are updated after either operation: `title` and `summary`
+come from `src/info.json`; category, license, and tags come from
+`modPortalContent/portalInfo.json`; and both `homepage` and `source_url` are
+the current GitHub repository URL. A non-empty `description.md` overrides the
+in-game description for the portal, while a non-empty `faq.md` supplies the
+FAQ.
 
 ## Initialize a new mod
 
@@ -73,12 +82,10 @@ input updates only the future Mod Portal Markdown description. If it is empty,
 the summary is used for `description.md`. `contact` and `homepage` are set to
 the current GitHub repository URL.
 
-Initialization does **not** publish the mod. This is intentional: the first
-portal release must use the distinct Mod Publish API and a key with
-**ModPortal: Publish Mods**; later releases use the Upload Mods API. The first
-publication transition remains the next release-workflow enhancement.
+Initialization does **not** publish the mod. Its first **Full** release uses
+the Mod Publish API; later full releases upload only the new version.
 
-## Future Mod Portal details automation
+## Mod Portal metadata
 
 Keep portal-only assets outside `src/` so they are not shipped in the mod ZIP:
 
@@ -91,10 +98,8 @@ modPortalContent/
   screenshots/
 ```
 
-`portalInfo.json` is deliberately not used in the first release workflow.
-It is reserved for a later opt-in step calling the Mod Details API; screenshots
-will use the Mod Images API. Both use a bearer key with **ModPortal: Edit
-Mods**, which is a different permission from upload.
+`portalInfo.json` is used by the release workflow to update Mod Portal details.
+Screenshots remain reserved for a later Mod Images API integration.
 
 Example `portalInfo.json`:
 
@@ -102,9 +107,7 @@ Example `portalInfo.json`:
 {
   "category": "utilities",
   "tags": ["logistics", "blueprints"],
-  "license": "default_gnulgplv3",
-  "homepage": "https://mods.factorio.com/mod/example",
-  "source_url": "https://github.com/kubiix/example"
+  "license": "default_gnulgplv3"
 }
 ```
 
