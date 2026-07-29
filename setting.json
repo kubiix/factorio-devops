@@ -1,0 +1,20 @@
+{
+  "license": {
+    "default_mit": {
+      "license_text_url": "https://opensource.org/license/mit",
+      "copright_text": "Licensed under the MIT License."
+    },
+    "default_gnugplv3": {
+      "license_text_url": "https://opensource.org/license/gpl-3.0",
+      "copright_text": "Licensed under the GNU General Public License v3.0."
+    },
+    "default_gnulgplv3": {
+      "license_text_url": "https://opensource.org/license/lgpl-3-0",
+      "copright_text": "Licensed under the GNU Lesser General Public License v3.0."
+    },
+    "default_apache2": {
+      "license_text_url": "https://opensource.org/license/apache-2.0",
+      "copright_text": "Licensed under the Apache License 2.0."
+    }
+  }
+}

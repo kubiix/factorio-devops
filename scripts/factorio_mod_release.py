@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+CHANGELOG_CATEGORIES = {"Changes", "Info", "Major Features", "Features", "Optimizations", "Bugfixes"}
 
 
 def fail(message: str) -> None:
@@ -38,26 +39,54 @@ def files(root: Path) -> tuple[Path, Path, Path]:
 
 
 def placeholder(version_line: str) -> str:
-    return f"""---------------------------------------------------------------------------------------------------
-Version: {version_line}
+    return f"""Version: {version_line}
 Date: TBD
   Changes:
     -
+---------------------------------------------------------------------------------------------------
 """
 
 
 def placeholder_block(text: str, version_line: str) -> tuple[int, int]:
-    match = re.search(rf"(?m)^Version:\s*{re.escape(version_line)}\s*$", text)
-    if not match:
+    marker = "---------------------------------------------------------------------------------------------------"
+    end = text.find(marker)
+    if end < 0:
+        fail("top changelog record must end with a separator")
+    record = text[:end]
+    lines = record.splitlines()
+    if not lines or lines[0] != f"Version: {version_line}":
         fail(f"top changelog record must contain 'Version: {version_line}'")
-    start = text.rfind("---------------------------------------------------------------------------------------------------", 0, match.start())
-    if start < 0:
-        start = match.start()
-    date = re.search(r"(?m)^Date:\s*TBD\s*$", text[match.end():])
-    if not date:
+    if len(lines) < 2 or lines[1] != "Date: TBD":
         fail("development changelog record must contain 'Date: TBD'")
-    next_marker = text.find("---------------------------------------------------------------------------------------------------", match.end())
-    return start, len(text) if next_marker < 0 else next_marker
+    category: str | None = None
+    entry_count = 0
+    for line in lines[2:]:
+        if not line:
+            continue
+        category_match = re.fullmatch(r"  (.+):", line)
+        if category_match:
+            if category is not None and entry_count == 0:
+                fail(f"changelog category '{category}' must contain at least one non-empty item")
+            category = category_match.group(1)
+            if category not in CHANGELOG_CATEGORIES:
+                fail(f"unsupported changelog category '{category}'")
+            entry_count = 0
+        elif re.fullmatch(r"    - \S.*", line):
+            if category is None:
+                fail("changelog item must follow a category")
+            entry_count += 1
+        elif line == "    -":
+            fail("changelog item must not be empty")
+        elif re.fullmatch(r"      \S.*", line):
+            if category is None or entry_count == 0:
+                fail("changelog continuation must follow a non-empty item")
+        else:
+            fail(f"invalid changelog line: {line!r}")
+    if category is None:
+        fail("development changelog record must contain at least one category")
+    if entry_count == 0:
+        fail(f"changelog category '{category}' must contain at least one non-empty item")
+    return 0, end
 
 
 def prepare(root: Path, version: str) -> None:
@@ -69,11 +98,11 @@ def prepare(root: Path, version: str) -> None:
     old = info.get("version")
     if not isinstance(old, str) or version_tuple(version) < version_tuple(old):
         fail("release version must be greater or equal than src/info.json version")
+    if version_tuple(version) < version_tuple(version_line):
+        fail("release version must be greater or equal than the development changelog version")
     changelog = changelog_path.read_text(encoding="utf-8")
     start, end = placeholder_block(changelog, version_line)
     record = changelog[start:end]
-    if not re.search(r"(?m)^\s*-\s*\S", record):
-        fail("development changelog record has no change item")
     date = datetime.now(UTC).strftime("%Y-%m-%d")
     record = re.sub(rf"(?m)^Version:\s*{re.escape(version_line)}\s*$", f"Version: {version}", record, count=1)
     record = re.sub(r"(?m)^Date:\s*TBD\s*$", f"Date: {date}", record, count=1)
@@ -85,7 +114,7 @@ def prepare(root: Path, version: str) -> None:
     state["versionState"] = "release"
     state["versionLine"] = version
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-    notes = re.sub(r"^-+\n", "", record).strip() + "\n"
+    notes = record.strip() + "\n"
     (root / ".release-notes.md").write_text(notes, encoding="utf-8")
 
 
