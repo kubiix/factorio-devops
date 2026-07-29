@@ -10,10 +10,6 @@ on:
         description: Title in Factorio's info.json
         required: true
         type: string
-      display_name:
-        description: Display title saved for the Mod Portal
-        required: true
-        type: string
       category:
         required: true
         type: string
@@ -64,7 +60,6 @@ jobs:
         env:
           INTERNAL_NAME: ${{ inputs.internal_name }}
           MOD_TITLE: ${{ inputs.mod_title }}
-          DISPLAY_NAME: ${{ inputs.display_name }}
           CATEGORY: ${{ inputs.category }}
           TAGS: ${{ inputs.tags }}
           DESCRIPTION: ${{ inputs.description }}
@@ -76,6 +71,6 @@ jobs:
       - name: Commit initialization
         run: |
           git add .factorio-release.json src modPortalContent COPYRIGHT
-          git commit -m "Start development 0.1.0"
+          git commit -m "Start development 0.1.x"
           git tag --annotate Init --message "Initialize mod"
           git push origin HEAD --follow-tags

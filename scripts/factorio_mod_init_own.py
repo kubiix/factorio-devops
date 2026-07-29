@@ -37,7 +37,6 @@ def portal_mod_exists(name: str) -> bool:
 def main(root: Path) -> None:
     internal_name = env("INTERNAL_NAME")
     mod_title = env("MOD_TITLE")
-    display_name = env("DISPLAY_NAME")
     version = "0.1.0"
     category = env("CATEGORY")
     tags = [tag.strip() for tag in env("TAGS", required=False).split(",") if tag.strip()]
@@ -50,8 +49,8 @@ def main(root: Path) -> None:
         fail("internal_name must start with kubiix-")
     if internal_name.endswith("-continued"):
         fail("internal_name must not end with -continued")
-    if len(display_name) > 250:
-        fail("display_name must not exceed 250 characters")
+    if len(mod_title) > 250:
+        fail("mod_title must not exceed 250 characters")
     if len(summary) > 500:
         fail("summary must not exceed 500 characters")
     if category not in CATEGORIES:
@@ -105,7 +104,7 @@ def main(root: Path) -> None:
     copyright = re.sub(rf"(?m)^-{{{len('factorio-mod-template')}}}$", "-" * len(internal_name), copyright, count=1)
     copyright_path.write_text(copyright, encoding="utf-8")
 
-    portal = {"title": display_name, "category": category, "license": "default_mit"}
+    portal = {"title": mod_title, "category": category, "license": "default_mit"}
     if tags:
         portal["tags"] = tags
     content = root / "modPortalContent"
