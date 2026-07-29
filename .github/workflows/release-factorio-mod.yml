@@ -120,10 +120,7 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.branch }}
         run: |
           python3 .factorio-devops/scripts/factorio_mod_release.py start-development .
-          CURRENT_VERSION="$(jq -r '.version' src/info.json)"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          git add src/changelog.txt .factorio-release.json
+          NEXT_VERSION="$(jq -r '.version' src/info.json)"
+          git add src/info.json src/changelog.txt .factorio-release.json
           git commit -S -m "Start development $NEXT_VERSION"
           git push origin "HEAD:$RELEASE_BRANCH"
-
