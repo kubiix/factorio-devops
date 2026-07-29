@@ -83,6 +83,6 @@ jobs:
       - name: Commit initialization
         run: |
           git add .factorio-release.json src modPortalContent COPYRIGHT
-          git commit -m "Start development 0.1.x"
-          git tag --annotate Init --message "Initialize mod"
+          git commit -S -m "Start development 0.1.x"
+          git tag -s --annotate Init --message "Initialize mod"
           git push origin HEAD --follow-tags
