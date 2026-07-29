@@ -71,8 +71,8 @@ def prepare(root: Path, version: str) -> None:
     if version.rsplit(".", 1)[0] + ".x" != version_line:
         fail(f"release version must be on the {version_line} line")
     old = info.get("version")
-    if not isinstance(old, str) or version_tuple(version) <= version_tuple(old):
-        fail("release version must be greater than src/info.json version")
+    if not isinstance(old, str) or version_tuple(version) < version_tuple(old):
+        fail("release version must be greater or equal than src/info.json version")
     changelog = changelog_path.read_text(encoding="utf-8")
     start, end = placeholder_block(changelog, version_line)
     record = changelog[start:end]
