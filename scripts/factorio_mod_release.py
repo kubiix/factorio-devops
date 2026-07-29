@@ -160,7 +160,7 @@ def start_development(root: Path) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        fail("usage: factorio_release.py {prepare|build|upload|start-development} ROOT [VERSION]")
+        fail("usage: factorio_mod_release.py {prepare|build|upload|start-development} ROOT [VERSION]")
     command, root = sys.argv[1], Path(sys.argv[2]).resolve()
     if command == "prepare" and len(sys.argv) == 4:
         prepare(root, sys.argv[3])
