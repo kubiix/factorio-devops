@@ -118,10 +118,12 @@ jobs:
           MOD_PORTAL_TOKEN: ${{ secrets.mod_portal_token }}
           REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
-          if ! PUBLISHED="$(python3 .factorio-devops/scripts/factorio_mod_release.py pull .)"; then
-            exit 1
-          fi
+          set +e
+          PUBLISHED="$(python3 .factorio-devops/scripts/factorio_mod_release.py pull .)"
+          PULL_STATUS=$?
+          set -e
           echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+          exit "$PULL_STATUS"
 
       - name: Start the next development cycle
         if: ${{ always() && ((inputs.release_mode == 'Commits Only' && success()) || (inputs.release_mode == 'Commits and Release' && (steps.github-release-draft.outcome == 'success' || steps.github-release-draft.outcome == 'failure')) || (inputs.release_mode == 'Full' && (steps.github-release-draft.outcome == 'failure' || steps.github-release-publish.outcome == 'failure' || steps.portal-pull.outcome == 'success' || steps.portal-pull.outcome == 'failure'))) }}

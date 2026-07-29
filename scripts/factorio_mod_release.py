@@ -258,10 +258,17 @@ def pull(root: Path) -> bool:
     published = state.get("published") is True
     if published:
         upload_version(root)
-    else:
-        publish(root)
-    edit_details(root)
-    return not published
+        edit_details(root)
+        return False
+    publish(root)
+    try:
+        edit_details(root)
+    except BaseException:
+        # The release is already published even when its metadata update fails.
+        # Emit this before re-raising so the workflow can persist that state.
+        print("true", flush=True)
+        raise
+    return True
 
 
 def start_development(root: Path, published: bool = False) -> None:
