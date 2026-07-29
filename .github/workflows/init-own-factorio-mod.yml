@@ -29,6 +29,10 @@ on:
         required: true
         type: string
 
+secrets:
+  gpg_private_key:
+    required: true
+
 permissions:
   contents: write
 
@@ -51,10 +55,18 @@ jobs:
           ref: main
           path: .factorio-devops
 
+      - name: Import signing key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.gpg_private_key }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
       - name: Configure commit author
         run: |
           git config user.name "KubiiTron [bot]"
-          git config user.email "kubiix-factorio-devops-bot@users.noreply.github.com"
+          git config user.email "kubiix@live.com"
 
       - name: Validate and initialize the repository
         env:
