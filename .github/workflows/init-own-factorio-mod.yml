@@ -62,6 +62,11 @@ jobs:
           git_commit_gpgsign: true
           git_tag_gpgsign: true
 
+      - name: Check imported signing key
+        run: |
+          gpg --list-secret-keys --keyid-format=long
+          git config --get user.signingkey
+
       - name: Configure commit author
         run: |
           git config user.name "KubiiTron [bot]"
