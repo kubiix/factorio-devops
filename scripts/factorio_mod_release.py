@@ -16,7 +16,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
-CHANGELOG_CATEGORIES = {"Changes", "Info", "Major Features", "Features", "Optimizations", "Bugfixes"}
+CHANGELOG_CATEGORIES = {"Changes", "Info", "Major Features", "Features", "Optimizations", "Bugfixes", "Credits"}
 
 
 def fail(message: str) -> None:
