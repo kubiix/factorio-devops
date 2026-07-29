@@ -221,7 +221,7 @@ def edit_details(root: Path) -> None:
     info = read_json(root / "src" / "info.json")
     portal = read_json(root / "modPortalContent" / "portalInfo.json")
     name, title, summary = info.get("name"), info.get("title"), info.get("description")
-    category, license_name, tags = portal.get("category"), portal.get("license"), portal.get("tags")
+    category, license_name, tags = portal.get("category"), portal.get("license"), portal.get("tags", [])
     if not all(isinstance(value, str) and value for value in (name, title, summary, category, license_name)):
         fail("info.json and portalInfo.json must contain non-empty name, title, description, category, and license")
     if not isinstance(tags, list) or not all(isinstance(tag, str) and tag for tag in tags):

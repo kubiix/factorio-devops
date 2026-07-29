@@ -93,6 +93,7 @@ jobs:
         run: python3 .factorio-devops/scripts/factorio_mod_release.py build . "$RELEASE_VERSION"
 
       - name: Create a draft GitHub release
+        id: github-release-draft
         if: inputs.release_mode != 'Commits Only'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -102,22 +103,28 @@ jobs:
             --draft --title "$(jq -r .title src/info.json) $RELEASE_VERSION" \
             --notes-file .release-notes.md
 
-      - name: Pull the release and details to the Factorio Mod Portal
-        id: portal-pull
-        if: inputs.release_mode == 'Full'
-        env:
-          MOD_PORTAL_TOKEN: ${{ secrets.mod_portal_token }}
-          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
-        run: echo "published=$(python3 .factorio-devops/scripts/factorio_mod_release.py pull .)" >> "$GITHUB_OUTPUT"
-
       - name: Publish the GitHub release
+        id: github-release-publish
         if: inputs.release_mode != 'Commits Only'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
         run: gh release edit "v$RELEASE_VERSION" --draft=false
 
+      - name: Pull the release and details to the Factorio Mod Portal
+        id: portal-pull
+        if: inputs.release_mode == 'Full'
+        env:
+          MOD_PORTAL_TOKEN: ${{ secrets.mod_portal_token }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          if ! PUBLISHED="$(python3 .factorio-devops/scripts/factorio_mod_release.py pull .)"; then
+            exit 1
+          fi
+          echo "published=$PUBLISHED" >> "$GITHUB_OUTPUT"
+
       - name: Start the next development cycle
+        if: ${{ always() && ((inputs.release_mode == 'Commits Only' && success()) || (inputs.release_mode == 'Commits and Release' && (steps.github-release-draft.outcome == 'success' || steps.github-release-draft.outcome == 'failure')) || (inputs.release_mode == 'Full' && (steps.github-release-draft.outcome == 'failure' || steps.github-release-publish.outcome == 'failure' || steps.portal-pull.outcome == 'success' || steps.portal-pull.outcome == 'failure'))) }}
         env:
           RELEASE_BRANCH: ${{ inputs.branch }}
           PORTAL_PUBLISHED: ${{ steps.portal-pull.outputs.published }}
