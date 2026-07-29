@@ -47,9 +47,9 @@ def placeholder(version_line: str) -> str:
     return f"""---------------------------------------------------------------------------------------------------
 Version: {version_line}
 Date: TBD
-Changes:
+  Changes:
   - 
-
+    -
 """
 
 
